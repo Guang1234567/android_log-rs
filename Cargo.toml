@@ -16,5 +16,5 @@ Logger which writes to Android logging subsystem
 travis-ci = { repository = "saleemrashid/android_log-rs" }
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 android_liblog-sys = "0.1"

@@ -31,7 +31,7 @@ extern crate android_liblog_sys;
 
 use std::ffi::CString;
 
-use log::{Log, LogLevel, LogLevelFilter, LogMetadata, LogRecord, SetLoggerError};
+use log::{Log, Level as LogLevel, LevelFilter as LogLevelFilter, Metadata as LogMetadata, Record as LogRecord, SetLoggerError};
 use android_liblog_sys::{__android_log_write, LogPriority};
 
 /// `AndroidLogger` is the implementation of the logger.
@@ -39,7 +39,7 @@ use android_liblog_sys::{__android_log_write, LogPriority};
 /// It should not be used from Rust libraries which should only use the facade.
 pub struct AndroidLogger {
     tag: CString,
-    format: Box<Fn(&LogRecord) -> String + Sync + Send>,
+    format: Box<dyn Fn(&LogRecord) -> String + Sync + Send>,
 }
 
 /// `LogBuilder` acts as builder for initializing the `AndroidLogger`. It can be
@@ -70,7 +70,7 @@ pub struct AndroidLogger {
 /// ```
 pub struct LogBuilder {
     tag: CString,
-    format: Box<Fn(&LogRecord) -> String + Sync + Send>,
+    format: Box<dyn Fn(&LogRecord) -> String + Sync + Send>,
 }
 
 /// Initializes the global logger with an `AndroidLogger`
@@ -78,9 +78,11 @@ pub struct LogBuilder {
 /// This should be called early in the execution of a Rust program and the
 /// global logger may only be initialized once. Future attempts will return an
 /// error.
+/*
 pub fn init<S: Into<String>>(tag: S) -> Result<(), SetLoggerError> {
     AndroidLogger::new(tag).init()
 }
+*/
 
 impl AndroidLogger {
     /// Initializes the logger with defaults
@@ -89,11 +91,14 @@ impl AndroidLogger {
     }
 
     /// Initializes the global logger with `self`
-    pub fn init(self) -> Result<(), SetLoggerError> {
+    pub fn init(&'static self) -> Result<(), SetLoggerError> {
+        /*
         log::set_logger(|max_level| {
             max_level.set(LogLevelFilter::max());
             Box::new(self)
         })
+        */
+        log::set_logger(self).map(|()| log::set_max_level(LogLevelFilter::max()))
     }
 }
 
@@ -121,6 +126,10 @@ impl Log for AndroidLogger {
             __android_log_write(prio as _, self.tag.as_ptr(), format.as_ptr());
         }
     }
+
+    fn flush(&self) {
+        // unimplemented!()
+    }
 }
 
 impl LogBuilder {
@@ -129,7 +138,7 @@ impl LogBuilder {
         LogBuilder {
             tag: CString::new(tag.into()).unwrap(),
             format: Box::new(|record: &LogRecord| {
-                format!("{}: {}", record.location().module_path(), record.args())
+                format!("{:?}: {}", record.module_path(), record.args())
             }),
         }
     }
@@ -143,9 +152,11 @@ impl LogBuilder {
     }
 
     /// Builds an `AndroidLogger` and initializes the global logger
+    /*
     pub fn init(self) -> Result<(), SetLoggerError> {
         self.build().init()
     }
+    */
 
     /// Builds an `AndroidLogger`
     pub fn build(self) -> AndroidLogger {
